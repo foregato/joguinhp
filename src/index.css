@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+:root {
+  --bg-canvas: #f6f4ef;
+  --bg-surface: #fcfbf8;
+  --bg-stone: #eae6dd;
+  --ink-primary: #2b3230;
+  --ink-muted: #68706d;
+  --accent-sage: #7fa68a;
+  --accent-sage-deep: #5e8569;
+  --accent-peach: #dda089;
+  --accent-sky: #8ab4c8;
+  --accent-butter: #e6c675;
+  --accent-lavender: #b5a8d1;
+  --hairline: rgba(43, 50, 48, 0.1);
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    background-color: var(--bg-canvas);
+    color: var(--ink-primary);
+    font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;
+    -webkit-font-smoothing: antialiased;
+    -webkit-tap-highlight-color: transparent;
+    user-select: none;
+  }
+
+  h1,
+  h2,
+  h3,
+  .font-display {
+    font-family: 'Outfit', system-ui, -apple-system, sans-serif;
+  }
+}
+
+.paper-backdrop {
+  background-color: var(--bg-canvas);
+  background-image:
+    radial-gradient(circle at 18% 20%, rgba(138, 180, 200, 0.08) 0%, transparent 45%),
+    radial-gradient(circle at 82% 78%, rgba(127, 166, 138, 0.09) 0%, transparent 45%),
+    radial-gradient(circle at 50% 50%, rgba(221, 160, 137, 0.04) 0%, transparent 65%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}
