@@ -14,6 +14,45 @@ export const WORLD_H = 580;
 export const GRAVITY = 520;
 const SUBSTEPS = 6;
 
+export interface WorldViewport {
+  scale: number;
+  offsetX: number;
+  offsetY: number;
+}
+
+export function computeWorldViewport(width: number, height: number): WorldViewport {
+  const isPortraitOrCompact = width < height || width < 640;
+  if (isPortraitOrCompact) {
+    // Mobile-first framing: zoom into the active central arena (x: 75..885, y: 45..550)
+    // and reserve safe breathing space for the compact top and bottom mobile HUD bars.
+    const topReserve = 66;
+    const bottomReserve = 82;
+    const availW = Math.max(120, width - 12);
+    const availH = Math.max(160, height - topReserve - bottomReserve);
+    const focusW = 810;
+    const focusH = 510;
+    const scale = Math.min(availW / focusW, availH / focusH);
+    const centerX = WORLD_W * 0.5;
+    const centerY = 296;
+    return {
+      scale,
+      offsetX: width * 0.5 - centerX * scale,
+      offsetY: topReserve + availH * 0.5 - centerY * scale,
+    };
+  }
+
+  const topReserve = 50;
+  const bottomReserve = 20;
+  const availW = Math.max(200, width - 24);
+  const availH = Math.max(200, height - topReserve - bottomReserve);
+  const scale = Math.min(availW / WORLD_W, availH / WORLD_H);
+  return {
+    scale,
+    offsetX: (width - WORLD_W * scale) * 0.5,
+    offsetY: topReserve + (availH - WORLD_H * scale) * 0.5,
+  };
+}
+
 interface Vec2 {
   x: number;
   y: number;
@@ -1000,7 +1039,8 @@ export function stepPhysicsWorld(
 export function findTappableAt(
   state: PhysicsWorldState,
   wx: number,
-  wy: number
+  wy: number,
+  minTouchRadius = 26
 ): PhysicsBody | null {
   let best: PhysicsBody | null = null;
   let bestDist = Infinity;
@@ -1024,17 +1064,17 @@ export function findTappableAt(
     if (!targetBody) continue;
     if (targetBody.maxTaps !== undefined && targetBody.tappedCount >= targetBody.maxTaps) continue;
 
-    // Generous touch hitbox (>= 44px equivalent)
+    // Generous touch hitbox (>= 48px CSS equivalent on mobile)
     if (b.shape === 'circle') {
-      const hitR = Math.max(28, (b.radius ?? 16) + 16 + (b.tapRadiusBonus ?? 0));
+      const hitR = Math.max(minTouchRadius, (b.radius ?? 16) + 16 + (b.tapRadiusBonus ?? 0));
       const d = Math.hypot(wx - b.x, wy - b.y);
       if (d <= hitR && d < bestDist) {
         best = targetBody;
         bestDist = d;
       }
     } else {
-      const hw = Math.max(24, (b.w ?? 30) * 0.5 + 16 + (b.tapRadiusBonus ?? 0));
-      const hh = Math.max(24, (b.h ?? 30) * 0.5 + 16 + (b.tapRadiusBonus ?? 0));
+      const hw = Math.max(minTouchRadius, (b.w ?? 30) * 0.5 + 16 + (b.tapRadiusBonus ?? 0));
+      const hh = Math.max(minTouchRadius, (b.h ?? 30) * 0.5 + 16 + (b.tapRadiusBonus ?? 0));
       const c = Math.cos(-b.angle);
       const s = Math.sin(-b.angle);
       const dx = wx - b.x;

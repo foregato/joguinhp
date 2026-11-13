@@ -19,11 +19,12 @@
   html,
   body,
   #root {
-    height: 100%;
+    height: 100dvh;
     width: 100%;
     margin: 0;
     padding: 0;
     overflow: hidden;
+    overscroll-behavior: none;
     background-color: var(--bg-canvas);
     color: var(--ink-primary);
     font-family: 'Plus Jakarta Sans', system-ui, -apple-system, sans-serif;

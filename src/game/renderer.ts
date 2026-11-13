@@ -1,4 +1,4 @@
-import { PhysicsWorldState, WORLD_H, WORLD_W } from './physics';
+import { computeWorldViewport, PhysicsWorldState, WORLD_W } from './physics';
 import { HintStep, LevelDefinition, LiquidZone, PhysicsBody } from './types';
 
 function roundRectPath(
@@ -65,14 +65,126 @@ function drawLiquid(ctx: CanvasRenderingContext2D, liq: LiquidZone) {
 function drawWeightPips(ctx: CanvasRenderingContext2D, count: number, yOffset = 0) {
   if (!count || count <= 0) return;
   const total = Math.round(count);
-  const spacing = 6;
-  const startX = -((total - 1) * spacing) / 2;
-  ctx.fillStyle = 'rgba(43, 50, 48, 0.55)';
-  for (let i = 0; i < total; i++) {
-    ctx.beginPath();
-    ctx.arc(startX + i * spacing, yOffset, 1.9, 0, Math.PI * 2);
-    ctx.fill();
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(0, yOffset, 8.5, 0, Math.PI * 2);
+  ctx.fillStyle = 'rgba(252, 251, 248, 0.88)';
+  ctx.fill();
+  ctx.strokeStyle = 'rgba(43, 50, 48, 0.25)';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+
+  ctx.fillStyle = '#2B3230';
+  ctx.font = '700 10.5px "Outfit", sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(String(total), 0, yOffset + 0.5);
+  ctx.restore();
+}
+
+function drawTapCueBadge(
+  ctx: CanvasRenderingContext2D,
+  b: PhysicsBody,
+  time: number,
+  isHovered: boolean,
+  isAttachedFruit: boolean,
+  isHeldBob: boolean
+) {
+  const pulse = 0.5 + 0.5 * Math.sin(time * 3.6 + b.x * 0.02);
+  let badgeX = 0;
+  let badgeY = 0;
+  let glyph: 'rotate' | 'remove' | 'up' | 'down' | 'right' = 'down';
+
+  if (b.tapAction === 'tilt_toggle') {
+    glyph = 'rotate';
+    badgeX = 0;
+    badgeY = 0;
+  } else if (b.tapAction === 'remove') {
+    glyph = 'remove';
+    badgeX = 0;
+    badgeY = -(b.h ?? 36) * 0.5 - 2;
+  } else if (b.tapAction === 'launch_toast' || b.tapAction === 'bounce_pad') {
+    glyph = 'up';
+    badgeX = 0;
+    badgeY = b.kind === 'toaster' ? 10 : 0;
+  } else if (b.tapAction === 'push_book') {
+    glyph = 'right';
+    badgeX = 0;
+    badgeY = 0;
+  } else if (b.tapAction === 'drop_item' || b.tapAction === 'release_pendulum' || isAttachedFruit || isHeldBob) {
+    glyph = 'down';
+    badgeX = 0;
+    badgeY = isAttachedFruit ? -(b.radius ?? 18) - 10 : 0;
   }
+
+  ctx.save();
+  // Un-rotate badge so glyph stays upright and immediately readable
+  ctx.translate(badgeX, badgeY);
+  ctx.rotate(-b.angle);
+
+  const ringR = 11 + pulse * 3.5 + (isHovered ? 2 : 0);
+  ctx.beginPath();
+  ctx.arc(0, 0, ringR, 0, Math.PI * 2);
+  ctx.strokeStyle = isHovered
+    ? 'rgba(94, 133, 105, 0.9)'
+    : `rgba(94, 133, 105, ${0.38 + pulse * 0.35})`;
+  ctx.lineWidth = 1.8;
+  ctx.stroke();
+
+  ctx.beginPath();
+  ctx.arc(0, 0, 8.5, 0, Math.PI * 2);
+  ctx.fillStyle = isHovered ? '#5E8569' : '#FCFBF8';
+  ctx.fill();
+  ctx.strokeStyle = '#5E8569';
+  ctx.lineWidth = 1.6;
+  ctx.stroke();
+
+  const ink = isHovered ? '#FCFBF8' : '#5E8569';
+  ctx.strokeStyle = ink;
+  ctx.fillStyle = ink;
+  ctx.lineWidth = 1.7;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  ctx.beginPath();
+  if (glyph === 'rotate') {
+    ctx.arc(0, 0, 3.8, Math.PI * 0.2, Math.PI * 1.65);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(2.4, -4.4);
+    ctx.lineTo(4.2, -2.1);
+    ctx.lineTo(1.5, -1.7);
+    ctx.stroke();
+  } else if (glyph === 'remove') {
+    ctx.moveTo(-2.8, -2.8);
+    ctx.lineTo(2.8, 2.8);
+    ctx.moveTo(2.8, -2.8);
+    ctx.lineTo(-2.8, 2.8);
+    ctx.stroke();
+  } else if (glyph === 'up') {
+    ctx.moveTo(0, 3.5);
+    ctx.lineTo(0, -3.5);
+    ctx.moveTo(-3, -0.8);
+    ctx.lineTo(0, -3.8);
+    ctx.lineTo(3, -0.8);
+    ctx.stroke();
+  } else if (glyph === 'right') {
+    ctx.moveTo(-3.5, 0);
+    ctx.lineTo(3.5, 0);
+    ctx.moveTo(0.8, -3);
+    ctx.lineTo(3.8, 0);
+    ctx.lineTo(0.8, 3);
+    ctx.stroke();
+  } else {
+    ctx.moveTo(0, -3.5);
+    ctx.lineTo(0, 3.5);
+    ctx.moveTo(-3, 0.8);
+    ctx.lineTo(0, 3.8);
+    ctx.lineTo(3, 0.8);
+    ctx.stroke();
+  }
+
+  ctx.restore();
 }
 
 function drawBody(
@@ -80,7 +192,8 @@ function drawBody(
   b: PhysicsBody,
   world: PhysicsWorldState,
   hoveredId: string | null,
-  time: number
+  time: number,
+  showInteractiveCues: boolean
 ) {
   if (!b.active || b.fadeOut <= 0.01) return;
 
@@ -95,6 +208,7 @@ function drawBody(
     world.pendulum && !world.pendulum.released && b.id === world.pendulum.bobBodyId
   );
   const isTappable =
+    showInteractiveCues &&
     ((Boolean(b.tapAction) && (b.maxTaps === undefined || b.tappedCount < b.maxTaps)) ||
       isAttachedFruit ||
       isHeldBob) &&
@@ -105,23 +219,28 @@ function drawBody(
       world.bodies.some((c) => c.id === hoveredId && c.launchTargetId === b.id)) ||
     (isHeldBob && hoveredId === 'pendulum_clip');
 
-  // Subtle interactive halo for tappable items
+  // Subtle but unmistakable interactive halo behind tappable items
   if (isTappable) {
-    const pulse = 0.5 + 0.5 * Math.sin(time * 3.1 + b.x * 0.02);
+    const pulse = 0.5 + 0.5 * Math.sin(time * 3.4 + b.x * 0.02);
     ctx.save();
+    ctx.fillStyle = isHovered
+      ? 'rgba(127, 166, 138, 0.22)'
+      : `rgba(127, 166, 138, ${0.08 + pulse * 0.08})`;
     ctx.strokeStyle = isHovered
-      ? 'rgba(127, 166, 138, 0.85)'
-      : `rgba(127, 166, 138, ${0.22 + pulse * 0.18})`;
-    ctx.lineWidth = isHovered ? 2.4 : 1.5;
-    ctx.setLineDash([4, 4]);
+      ? 'rgba(94, 133, 105, 0.95)'
+      : `rgba(94, 133, 105, ${0.48 + pulse * 0.34})`;
+    ctx.lineWidth = isHovered ? 2.8 : 2.1;
+    ctx.setLineDash([5, 4]);
     if (b.shape === 'circle') {
       ctx.beginPath();
-      ctx.arc(0, 0, (b.radius ?? 16) + 7 + (isHovered ? 2 : 0), 0, Math.PI * 2);
+      ctx.arc(0, 0, (b.radius ?? 16) + 8 + pulse * 2 + (isHovered ? 2 : 0), 0, Math.PI * 2);
+      ctx.fill();
       ctx.stroke();
     } else {
-      const hw = (b.w ?? 30) * 0.5 + 6 + (isHovered ? 2 : 0);
-      const hh = (b.h ?? 30) * 0.5 + 6 + (isHovered ? 2 : 0);
-      roundRectPath(ctx, -hw, -hh, hw * 2, hh * 2, 10);
+      const hw = (b.w ?? 30) * 0.5 + 7 + pulse * 1.5 + (isHovered ? 2 : 0);
+      const hh = (b.h ?? 30) * 0.5 + 7 + pulse * 1.5 + (isHovered ? 2 : 0);
+      roundRectPath(ctx, -hw, -hh, hw * 2, hh * 2, 11);
+      ctx.fill();
       ctx.stroke();
     }
     ctx.restore();
@@ -620,6 +739,10 @@ function drawBody(
     }
   }
 
+  if (isTappable) {
+    drawTapCueBadge(ctx, b, time, isHovered, isAttachedFruit, isHeldBob);
+  }
+
   ctx.restore();
 }
 
@@ -676,13 +799,13 @@ function drawScalesAndMobiles(ctx: CanvasRenderingContext2D, world: PhysicsWorld
     ctx.lineWidth = 1.4;
     ctx.beginPath();
     ctx.moveTo(lx, ly);
-    ctx.lineTo(leftPan.x - 32, leftPan.y - 4);
+    ctx.lineTo(leftPan.x - 36, leftPan.y - 4);
     ctx.moveTo(lx, ly);
-    ctx.lineTo(leftPan.x + 32, leftPan.y - 4);
+    ctx.lineTo(leftPan.x + 36, leftPan.y - 4);
     ctx.moveTo(rx, ry);
-    ctx.lineTo(rightPan.x - 32, rightPan.y - 4);
+    ctx.lineTo(rightPan.x - 36, rightPan.y - 4);
     ctx.moveTo(rx, ry);
-    ctx.lineTo(rightPan.x + 32, rightPan.y - 4);
+    ctx.lineTo(rightPan.x + 36, rightPan.y - 4);
     ctx.stroke();
     ctx.restore();
   }
@@ -885,14 +1008,12 @@ export function renderPhysicsWorld(
   goalProgress: number,
   hoveredId: string | null,
   activeHint: HintStep | null,
-  hintTier: number
+  hintTier: number,
+  canTapMore = true
 ) {
   ctx.clearRect(0, 0, width, height);
 
-  // Fit 960x580 virtual world cleanly centered with calm margin
-  const scale = Math.min(width / WORLD_W, height / WORLD_H);
-  const offsetX = (width - WORLD_W * scale) * 0.5;
-  const offsetY = (height - WORLD_H * scale) * 0.5;
+  const { scale, offsetX, offsetY } = computeWorldViewport(width, height);
 
   ctx.save();
   ctx.translate(offsetX, offsetY);
@@ -948,8 +1069,9 @@ export function renderPhysicsWorld(
   drawPendulum(ctx, world);
 
   // Draw all bodies
+  const showInteractiveCues = Boolean(level) && canTapMore;
   for (const b of world.bodies) {
-    drawBody(ctx, b, world, hoveredId, world.timeElapsed);
+    drawBody(ctx, b, world, hoveredId, world.timeElapsed, showInteractiveCues);
   }
 
   // Draw tap ripples

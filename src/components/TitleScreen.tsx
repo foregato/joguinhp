@@ -80,11 +80,11 @@ export function TitleScreen({
           </svg>
         </div>
 
-        <p className="mb-8 max-w-md text-base leading-relaxed text-[#68706d] sm:text-lg">
-          Puzzles minimalistas com objetos do cotidiano. Um toque suave para colocar tudo em movimento.
+        <p className="mb-7 max-w-md text-sm leading-relaxed text-[#68706d] sm:mb-8 sm:text-lg">
+          Puzzles minimalistas com objetos do cotidiano. Toque nos marcadores verdes dentro do limite de toques.
         </p>
 
-        <div className="pointer-events-auto flex flex-wrap items-center justify-center gap-3">
+        <div className="pointer-events-auto flex w-full max-w-xs flex-col items-stretch justify-center gap-2.5 sm:max-w-none sm:flex-row sm:items-center sm:gap-3">
           <button
             type="button"
             onClick={onStart}
@@ -98,14 +98,14 @@ export function TitleScreen({
             onClick={onOpenGrid}
             className="min-h-[48px] whitespace-nowrap rounded-xl border border-[#2b3230]/12 bg-[#fcfbf8]/95 px-6 py-3 font-display text-base font-medium text-[#2b3230] transition-transform duration-150 hover:scale-[1.02] hover:bg-[#eae6dd]/60 active:scale-[0.98] focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5e8569]"
           >
-            Fases (01–12)
+            Fases (01–22)
           </button>
         </div>
       </div>
 
       {/* Single flat control-hint line */}
       <div className="text-center text-xs tracking-wide text-[#68706d] sm:text-sm">
-        Toque ou clique nos objetos · R Reiniciar · H Dica · M Som
+        Toque nos ícones verdes para agir · R Reiniciar · H Dica
       </div>
     </div>
   );

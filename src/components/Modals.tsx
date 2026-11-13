@@ -81,7 +81,7 @@ export function LevelCompleteModal({
           {hasNextLevel ? 'Tudo no lugar' : 'Mesa completa!'}
         </h2>
         <p className="mt-2 text-sm text-[#68706d] tabular-nums">
-          Resolvido com {tapsUsed} {tapsUsed === 1 ? 'toque' : 'toques'}
+          Resolvido com {tapsUsed} de {level.tapLimit} {level.tapLimit === 1 ? 'toque' : 'toques'}
         </p>
 
         <div className="mt-6 flex flex-col gap-2.5">
@@ -146,7 +146,7 @@ export function CampaignCompleteModal({
         <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-full bg-[#e6c675]/25 text-[#5e8569]">
           <CheckCircle2 className="h-7 w-7" />
         </div>
-        <p className="text-xs font-medium text-[#68706d]">12 de 12 Fases Concluídas</p>
+        <p className="text-xs font-medium text-[#68706d]">22 de 22 Fases Concluídas</p>
         <h2 className="mt-1 font-display text-3xl font-semibold text-[#2b3230]">
           Jornada Concluída
         </h2>

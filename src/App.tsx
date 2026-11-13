@@ -49,6 +49,7 @@ export default function App() {
   });
   const [resetToken, setResetToken] = useState(0);
   const [tapCount, setTapCount] = useState(0);
+  const [outOfTapsStuck, setOutOfTapsStuck] = useState(false);
   const [hintTier, setHintTier] = useState(0);
   const [hintIndex, setHintIndex] = useState(0);
   const [solvedTaps, setSolvedTaps] = useState(0);
@@ -77,6 +78,7 @@ export default function App() {
     audioEngine.unlock();
     setCurrentLevelId(levelId);
     setTapCount(0);
+    setOutOfTapsStuck(false);
     setHintTier(0);
     setHintIndex(0);
     setResetToken((n) => n + 1);
@@ -92,6 +94,7 @@ export default function App() {
   const handleRestartLevel = useCallback(() => {
     audioEngine.unlock();
     setTapCount(0);
+    setOutOfTapsStuck(false);
     setHintTier(0);
     setHintIndex(0);
     setResetToken((n) => n + 1);
@@ -191,7 +194,7 @@ export default function App() {
   );
 
   return (
-    <main className="paper-backdrop relative h-full w-full overflow-hidden">
+    <main className="paper-backdrop relative h-dvh w-full overflow-hidden">
       {gameState === 'LEVEL_GRID' ? (
         <LevelGrid
           progress={progress}
@@ -209,6 +212,7 @@ export default function App() {
             hintTier={gameState === 'PLAYING' ? hintTier : 0}
             activeHint={activeHint}
             onTapPerformed={setTapCount}
+            onOutOfTapsStuck={setOutOfTapsStuck}
             onLevelSolved={handleLevelSolved}
           />
 
@@ -229,6 +233,7 @@ export default function App() {
             <GameHUD
               level={currentLevel}
               tapCount={tapCount}
+              outOfTapsStuck={outOfTapsStuck}
               hintTier={hintTier}
               activeHint={activeHint}
               isMuted={progress.isMuted}

@@ -19,21 +19,21 @@ export function LevelGrid({
   const completedCount = progress.completedLevels.length;
 
   return (
-    <div className="paper-backdrop flex h-full w-full flex-col overflow-y-auto px-6 py-6 sm:px-10 sm:py-8">
+    <div className="paper-backdrop flex h-full w-full flex-col overflow-y-auto px-4 py-4 sm:px-10 sm:py-8">
       <div className="mx-auto flex w-full max-w-5xl flex-1 flex-col">
         {/* Clean minimal top bar */}
-        <header className="mb-8 flex items-center justify-between gap-4 border-b border-[#2b3230]/10 pb-5">
+        <header className="mb-5 flex items-center justify-between gap-3 border-b border-[#2b3230]/10 pb-4 sm:mb-8 sm:pb-5">
           <button
             type="button"
             onClick={onBackToTitle}
-            className="inline-flex min-h-[44px] items-center gap-2 whitespace-nowrap rounded-xl px-3 py-2 text-sm font-medium text-[#2b3230] transition-colors hover:bg-[#eae6dd]/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5e8569]"
+            className="inline-flex min-h-[44px] items-center gap-1.5 whitespace-nowrap rounded-xl px-2.5 py-2 text-sm font-medium text-[#2b3230] transition-colors hover:bg-[#eae6dd]/70 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5e8569] sm:px-3"
           >
             <ArrowLeft className="h-4 w-4" />
             <span>Início</span>
           </button>
 
           <div className="text-center">
-            <h1 className="font-display text-2xl font-semibold tracking-tight text-[#2b3230] sm:text-3xl">
+            <h1 className="font-display text-xl font-semibold tracking-tight text-[#2b3230] sm:text-3xl">
               Fases do Cotidiano
             </h1>
             <p className="mt-0.5 text-xs text-[#68706d] tabular-nums sm:text-sm">
@@ -52,8 +52,8 @@ export function LevelGrid({
           </button>
         </header>
 
-        {/* Direct numbered 12-level grid */}
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {/* Mobile-first 2-column direct numbered level grid (01-22) */}
+        <div className="grid grid-cols-2 gap-3 pb-6 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
           {LEVELS.map((lvl) => {
             const isCompleted = progress.completedLevels.includes(lvl.id);
             const isUnlocked = lvl.id <= progress.unlockedLevel || isCompleted;
@@ -65,20 +65,20 @@ export function LevelGrid({
                 type="button"
                 disabled={!isUnlocked}
                 onClick={() => onSelectLevel(lvl.id)}
-                className={`group flex min-h-[126px] flex-col justify-between rounded-2xl border p-5 text-left transition-transform duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5e8569] ${
+                className={`group flex min-h-[112px] flex-col justify-between rounded-2xl border p-3.5 text-left transition-transform duration-150 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-[#5e8569] sm:min-h-[126px] sm:p-5 ${
                   isUnlocked
-                    ? 'cursor-pointer border-[#2b3230]/10 bg-[#fcfbf8] hover:-translate-y-0.5 hover:border-[#7fa68a]/60 active:translate-y-0'
+                    ? 'cursor-pointer border-[#2b3230]/10 bg-[#fcfbf8] hover:-translate-y-0.5 hover:border-[#7fa68a]/60 active:scale-[0.98]'
                     : 'cursor-not-allowed border-[#2b3230]/6 bg-[#eae6dd]/45 opacity-65'
                 }`}
               >
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex items-center gap-2 text-xs font-medium text-[#68706d] tabular-nums">
-                    <span className="font-display text-base font-semibold text-[#2b3230]">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-1.5 text-[11px] font-medium text-[#68706d] tabular-nums sm:text-xs">
+                    <span className="font-display text-sm font-semibold text-[#2b3230] sm:text-base">
                       {lvl.numberLabel}
                     </span>
                     <span aria-hidden="true">·</span>
-                    <span>
-                      {isCompleted ? 'Concluída' : isUnlocked ? 'Disponível' : 'Bloqueada'}
+                    <span className="truncate">
+                      {lvl.id >= 13 ? 'Médio' : isCompleted ? 'Feita' : isUnlocked ? 'Livre' : 'Presa'}
                     </span>
                   </div>
 
@@ -96,27 +96,29 @@ export function LevelGrid({
                     ) : !isUnlocked ? (
                       <Lock className="h-3.5 w-3.5" />
                     ) : (
-                      <ObjectIcon kind={lvl.objectIcon} className="h-6 w-6" />
+                      <ObjectIcon kind={lvl.objectIcon} className="h-5 w-5 sm:h-6 sm:w-6" />
                     )}
                   </span>
                 </div>
 
-                <div className="mt-4 flex items-end justify-between gap-3">
-                  <div>
-                    <h2 className="font-display text-lg font-medium leading-snug text-[#2b3230]">
+                <div className="mt-3 flex items-end justify-between gap-2 sm:mt-4">
+                  <div className="min-w-0">
+                    <h2 className="truncate font-display text-sm font-medium leading-snug text-[#2b3230] sm:text-lg">
                       {lvl.title}
                     </h2>
                     {best !== undefined ? (
-                      <p className="mt-1 text-xs text-[#68706d] tabular-nums">
-                        Melhor: {best} {best === 1 ? 'toque' : 'toques'}
+                      <p className="mt-0.5 text-[11px] text-[#68706d] tabular-nums sm:mt-1 sm:text-xs">
+                        Melhor: {best}/{lvl.tapLimit}
                       </p>
                     ) : (
-                      <p className="mt-1 line-clamp-1 text-xs text-[#68706d]">{lvl.subtitle}</p>
+                      <p className="mt-0.5 text-[11px] text-[#68706d] tabular-nums sm:mt-1 sm:text-xs">
+                        Limite: {lvl.tapLimit} {lvl.tapLimit === 1 ? 'toque' : 'toques'}
+                      </p>
                     )}
                   </div>
 
                   {isCompleted && (
-                    <ObjectIcon kind={lvl.objectIcon} className="h-7 w-7 shrink-0 opacity-85" />
+                    <ObjectIcon kind={lvl.objectIcon} className="hidden h-7 w-7 shrink-0 opacity-85 sm:block" />
                   )}
                 </div>
               </button>

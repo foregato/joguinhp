@@ -236,6 +236,7 @@ export interface LevelDefinition {
     | 'pendulum'
     | 'bell';
   idealTaps: number;
+  tapLimit: number;
   hints: HintStep[];
   goal: LevelGoalCheck;
   setup: () => {

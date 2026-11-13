@@ -2,12 +2,11 @@ import { useEffect, useRef } from 'react';
 import { audioEngine } from '../game/audio';
 import { createTitleDiorama, createWorldFromLevel, evaluateLevelGoal } from '../game/levels';
 import {
+  computeWorldViewport,
   findTappableAt,
   PhysicsWorldState,
   stepPhysicsWorld,
   triggerBodyTap,
-  WORLD_H,
-  WORLD_W,
 } from '../game/physics';
 import { renderPhysicsWorld } from '../game/renderer';
 import { HintStep, LevelDefinition } from '../game/types';
@@ -20,6 +19,7 @@ interface GameCanvasProps {
   hintTier: number;
   activeHint: HintStep | null;
   onTapPerformed: (totalTaps: number) => void;
+  onOutOfTapsStuck: (stuck: boolean) => void;
   onLevelSolved: (tapsUsed: number) => void;
 }
 
@@ -31,6 +31,7 @@ export function GameCanvas({
   hintTier,
   activeHint,
   onTapPerformed,
+  onOutOfTapsStuck,
   onLevelSolved,
 }: GameCanvasProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
@@ -43,6 +44,8 @@ export function GameCanvas({
   const solvedFiredRef = useRef(false);
   const tapCountRef = useRef(0);
   const goalProgressRef = useRef(0);
+  const stuckTimerRef = useRef(0);
+  const stuckFiredRef = useRef(false);
 
   // Sync props to refs so RAF loop never restarts unnecessarily
   const modeRef = useRef(mode);
@@ -51,6 +54,7 @@ export function GameCanvas({
   const hintTierRef = useRef(hintTier);
   const activeHintRef = useRef(activeHint);
   const onTapRef = useRef(onTapPerformed);
+  const onStuckRef = useRef(onOutOfTapsStuck);
   const onSolvedRef = useRef(onLevelSolved);
 
   modeRef.current = mode;
@@ -59,6 +63,7 @@ export function GameCanvas({
   hintTierRef.current = hintTier;
   activeHintRef.current = activeHint;
   onTapRef.current = onTapPerformed;
+  onStuckRef.current = onOutOfTapsStuck;
   onSolvedRef.current = onLevelSolved;
 
   // Rebuild world when level or resetToken changes
@@ -66,6 +71,9 @@ export function GameCanvas({
     solvedFiredRef.current = false;
     tapCountRef.current = 0;
     goalProgressRef.current = 0;
+    stuckTimerRef.current = 0;
+    stuckFiredRef.current = false;
+    onStuckRef.current(false);
     if (mode === 'play' && level) {
       worldRef.current = createWorldFromLevel(level);
       audioEngine.setComplexity(level.id);
@@ -114,11 +122,12 @@ export function GameCanvas({
 
         stepPhysicsWorld(world, dt, {
           onImpact: (a, b, speed) => {
-            const mat = a.material === 'bell' || b.material === 'bell'
-              ? 'bell'
-              : !a.isStatic
-              ? a.material
-              : b.material;
+            const mat =
+              a.material === 'bell' || b.material === 'bell'
+                ? 'bell'
+                : !a.isStatic
+                ? a.material
+                : b.material;
             audioEngine.playImpact(mat, speed);
           },
           onWaterEnter: () => {
@@ -139,11 +148,29 @@ export function GameCanvas({
           goalProgressRef.current = progress;
           if (solved) {
             solvedFiredRef.current = true;
+            stuckFiredRef.current = false;
+            onStuckRef.current(false);
             audioEngine.playLevelSolved();
             onSolvedRef.current(tapCountRef.current);
+          } else if (
+            tapCountRef.current >= levelRef.current.tapLimit &&
+            !stuckFiredRef.current
+          ) {
+            if (world.kineticEnergy < 0.03 && progress < 0.05) {
+              stuckTimerRef.current += dt;
+              if (stuckTimerRef.current > 1.1) {
+                stuckFiredRef.current = true;
+                onStuckRef.current(true);
+              }
+            } else {
+              stuckTimerRef.current = 0;
+            }
           }
         }
       }
+
+      const canTapMore =
+        !levelRef.current || tapCountRef.current < levelRef.current.tapLimit;
 
       renderPhysicsWorld(
         ctx,
@@ -154,7 +181,8 @@ export function GameCanvas({
         goalProgressRef.current,
         hoveredIdRef.current,
         activeHintRef.current,
-        hintTierRef.current
+        hintTierRef.current,
+        canTapMore
       );
 
       rafId = requestAnimationFrame(frame);
@@ -170,36 +198,51 @@ export function GameCanvas({
 
   const mapClientToWorld = (clientX: number, clientY: number) => {
     const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
+    if (!canvas) return { x: 0, y: 0, minTouchRadius: 26 };
     const rect = canvas.getBoundingClientRect();
-    const scale = Math.min(rect.width / WORLD_W, rect.height / WORLD_H);
-    const offsetX = (rect.width - WORLD_W * scale) * 0.5;
-    const offsetY = (rect.height - WORLD_H * scale) * 0.5;
+    const { scale, offsetX, offsetY } = computeWorldViewport(rect.width, rect.height);
     return {
       x: (clientX - rect.left - offsetX) / scale,
       y: (clientY - rect.top - offsetY) / scale,
+      minTouchRadius: Math.max(26, 25 / Math.max(0.25, scale)),
     };
   };
 
   const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
-    if (mode !== 'play' || paused) {
+    if (
+      mode !== 'play' ||
+      paused ||
+      !level ||
+      tapCountRef.current >= level.tapLimit
+    ) {
       hoveredIdRef.current = null;
       return;
     }
     const pt = mapClientToWorld(e.clientX, e.clientY);
-    const body = findTappableAt(worldRef.current, pt.x, pt.y);
+    const body = findTappableAt(worldRef.current, pt.x, pt.y, pt.minTouchRadius);
     hoveredIdRef.current = body ? body.id : null;
   };
 
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     audioEngine.unlock();
-    if (mode !== 'play' || paused || solvedFiredRef.current) return;
+    if (mode !== 'play' || paused || solvedFiredRef.current || !level) return;
+
+    if (tapCountRef.current >= level.tapLimit) {
+      // Player tried tapping after exhausting tap limit: gently prompt restart
+      audioEngine.playImpact('soft', 90);
+      if (!stuckFiredRef.current) {
+        stuckFiredRef.current = true;
+        onStuckRef.current(true);
+      }
+      return;
+    }
 
     const pt = mapClientToWorld(e.clientX, e.clientY);
-    const body = findTappableAt(worldRef.current, pt.x, pt.y);
+    const body = findTappableAt(worldRef.current, pt.x, pt.y, pt.minTouchRadius);
     if (body) {
       const result = triggerBodyTap(worldRef.current, body);
       tapCountRef.current += 1;
+      stuckTimerRef.current = 0;
       if (result.soundKind === 'spring') {
         audioEngine.playImpact('spring', 200);
       } else {
